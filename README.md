@@ -23,19 +23,29 @@ Lua FFmpeg API for Screencasting
 
 ### Usage Example:
 
+- ffmpeg run as a background command.
+
 ```lua
 
 local ffmpeg = require("ffmpeg")
 
 local recorder = ffmpeg.Recorder:new()
-    :input_video({device = "x11grab", source = ":0.0", framerate = 60})
+    :input_video({device = "x11grab", source = ":0.0", framerate = 30})
     :input_audio({device = "pulse", source = "default"})
     :output_video({codec = "libx264", crf = 23, preset = "medium"})
     :output_audio({codec = "aac", bitrate = "192k"})
     :output("screencast.mp4")
-    :on_start(function() print("Recording!") end)
-    
-recorder:start()
+
+print("Command: " .. recorder:get_command())
+local success, err = recorder:start()
+if not success then
+    print("Error: " .. err)
+else
+    print("Recording started - press Enter to stop")
+    io.read()
+    recorder:stop()
+    print("Recording stopped")
+end
 ```
 
 ###### HackIT - 752963e64@tutanota.com
