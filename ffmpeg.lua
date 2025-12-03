@@ -189,7 +189,7 @@ end
 
 -- Command building
 function Recorder:to_command()
-    local cmd_parts = {"ffmpeg"}
+    local cmd_parts = {"ffmpeg -hide_banner"}
     
     -- Overwrite flag
     if #self.outputs > 0 and self.outputs[1].overwrite then
