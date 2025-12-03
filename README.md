@@ -5,21 +5,21 @@ Lua FFmpeg API for Screencasting
 
 ## Core Features:
 
-    Full command-builder pattern with method chaining
-    Video/audio input configuration with device control
-    Complete codec and encoding parameter control
-    Video/audio filter support (simple & complex)
-    Multiple output support
-    Built-in presets (YouTube, high quality, streaming)
+- Full command-builder pattern with method chaining
+- Video/audio input configuration with device control
+- Complete codec and encoding parameter control
+- Video/audio filter support (simple & complex)
+- Multiple output support
+- Built-in presets (YouTube, high quality, streaming)
 
 ## Key Methods:
 
-    input_video(), input_audio() - Configure inputs
-    output_video(), output_audio() - Configure encoding
-    filter_video(), filter_audio() - Add filters
-    output() - Set output file/stream
-    start(), stop() - Process control
-    to_command() - Preview generated FFmpeg command
+- input_video(), input_audio() - Configure inputs
+- output_video(), output_audio() - Configure encoding
+- filter_video(), filter_audio() - Add filters
+- output() - Set output file/stream
+- start(), stop() - Process control
+- to_command() - Preview generated FFmpeg command
 
 ### Usage Example:
 
