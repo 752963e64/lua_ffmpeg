@@ -30,8 +30,9 @@ Lua FFmpeg API for Screencasting
 local ffmpeg = require("ffmpeg")
 
 local recorder = ffmpeg.Recorder:new()
-    :input_video({device = "x11grab", source = ":0.0", framerate = 30})
-    :input_audio({device = "pulse", source = "default"})
+    :input_video({device = "x11grab", source = ":0", framerate = 30})
+    -- This is to record audio from an input device like a microphone.
+    :input_audio({device = "pulse", source = "default"}) -- to use pulse, you need pulse.
     :output_video({codec = "libx264", crf = 23, preset = "medium"})
     :output_audio({codec = "aac", bitrate = "192k"})
     :output("screencast.mp4")
@@ -47,6 +48,8 @@ else
     print("Recording stopped")
 end
 ```
+
+
 
 ###### HackIT - 752963e64@tutanota.com
 
