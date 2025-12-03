@@ -14,12 +14,12 @@ Lua FFmpeg API for Screencasting
 
 ## Key Methods:
 
-- input_video(), input_audio() - Configure inputs
-- output_video(), output_audio() - Configure encoding
-- filter_video(), filter_audio() - Add filters
-- output() - Set output file/stream
-- start(), stop() - Process control
-- to_command() - Preview generated FFmpeg command
+- ```input_video()```, ```input_audio()``` - Configure inputs
+- ```output_video()```, ```output_audio()``` - Configure encoding
+- ```filter_video()```, ```filter_audio()``` - Add filters
+- ```output()``` - Set output file/stream
+- ```start()```, ```stop()``` - Process control
+- ```to_command()``` - Preview generated FFmpeg command
 
 ### Usage Example:
 
