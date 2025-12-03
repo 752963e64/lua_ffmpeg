@@ -1,7 +1,7 @@
 --[[
   @author 2025 HackIT with Claude.
 
-  first iteration: untested
+  second iteration: actively working in tandem!
  
 ]]
 -- ffmpeg.lua - Lua FFmpeg API for Screencasting
@@ -417,15 +417,18 @@ function Recorder:start()
     
     local cmd = self:to_command()
     
-    -- Execute command (platform-specific implementation needed)
-    -- This is a simplified version - real implementation would use proper process spawning
-    local handle = io.popen(cmd .. " 2>&1", "r")
+    -- Store the command for debugging
+    self.last_command = cmd
     
-    if not handle then
-        return false, "Failed to start ffmpeg process"
+    -- Execute command in background
+    -- For persistent recording, we need to run it asynchronously
+    local bg_cmd = cmd .. " &"
+    local exit_code = os.execute(bg_cmd)
+    
+    if not exit_code or exit_code ~= 0 then
+        return false, "Failed to start ffmpeg process. Command: " .. cmd
     end
     
-    self.process = handle
     self.status.running = true
     self.status.error = nil
     
@@ -441,10 +444,9 @@ function Recorder:stop()
         return false, "Recorder is not running"
     end
     
-    if self.process then
-        self.process:close()
-        self.process = nil
-    end
+    -- Send 'q' to ffmpeg to gracefully stop (requires interactive mode)
+    -- Alternative: use pkill or kill the process by PID
+    os.execute("pkill -INT ffmpeg")
     
     self.status.running = false
     
@@ -453,6 +455,10 @@ function Recorder:stop()
     end
     
     return true
+end
+
+function Recorder:get_command()
+    return self.last_command or self:to_command()
 end
 
 function Recorder:pause()
@@ -506,10 +512,8 @@ function Recorder:apply_preset(preset)
     return self
 end
 
--- Module-level functions
-function ffmpeg.Recorder:new()
-    return Recorder:new()
-end
+-- Expose Recorder class
+ffmpeg.Recorder = Recorder
 
 function ffmpeg.list_devices(device_type)
     -- Platform-specific implementation needed
