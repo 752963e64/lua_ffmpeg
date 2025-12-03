@@ -67,9 +67,9 @@ function Recorder:input_video(options)
     
     local input = {
         device = options.device or "x11grab",
-        source = options.source or ":0.0",
+        source = options.source or ":0",
         framerate = options.framerate or 30,
-        video_size = options.video_size or "1920x1080",
+        video_size = options.video_size or "800x600",
         offset_x = options.offset_x or 0,
         offset_y = options.offset_y or 0,
         show_cursor = options.show_cursor ~= false,
@@ -90,7 +90,7 @@ function Recorder:input_audio(options)
     options = options or {}
     
     local input = {
-        device = options.device or "pulse",
+        device = options.device or "alsa",
         source = options.source or "default",
         sample_rate = options.sample_rate or 48000,
         channels = options.channels or 2,
@@ -577,3 +577,4 @@ ffmpeg.presets.streaming = {
 }
 
 return ffmpeg
+
