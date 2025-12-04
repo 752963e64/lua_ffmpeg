@@ -31,22 +31,34 @@ local ffmpeg = require("ffmpeg")
 
 local recorder = ffmpeg.Recorder:new()
     :input_video({device = "x11grab", source = ":0", framerate = 30})
-    -- This is to record audio from an input device like a microphone.
-    :input_audio({device = "pulse", source = "default"}) -- to use pulse, you need pulse.
-    :output_video({codec = "libx264", crf = 23, preset = "medium"})
-    :output_audio({codec = "aac", bitrate = "192k"})
+    :output_video({codec = "libx264", crf = 10, preset = "ultrafast"})
+    :output_audio({codec = "aac", bitrate = "128k"})
     :output("screencast.mp4")
+    :on_progress(function(data)
+        print(string.format("PROGRESS: Frame: %d | FPS: %.1f | Time: %.1fs", 
+            data.frame, data.fps, data.duration))
+    end)
 
-print("Command: " .. recorder:get_command())
+print("Starting recorder...")
 local success, err = recorder:start()
 if not success then
-    print("Error: " .. err)
-else
-    print("Recording started - press Enter to stop")
-    io.read()
-    recorder:stop()
-    print("Recording stopped")
+    print("Failed to start: " .. err)
+    return
 end
+
+print("Recording for 5 seconds...")
+for i = 1, 5 do
+    recorder:update()
+    os.execute("sleep 1")
+    print("Update " .. i)
+end
+
+-- Debug: print raw stderr
+print("\n=== RAW STDERR OUTPUT ===")
+print(recorder:get_stderr())
+print("=========================\n")
+
+recorder:stop()
 ```
 
 
