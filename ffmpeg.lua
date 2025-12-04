@@ -1,11 +1,15 @@
 --[[
+
   @author 2025 HackIT with Claude.
 
-  second iteration: actively working in tandem!
+  It's not handy to copy paste... would be better if he can make PR to my repo :/
+  
+  now I need read and tweak this all :/
  
+  ffmpeg.lua - Lua FFmpeg API for Screencasting
+  Provides full control over FFmpeg for expert users
+
 ]]
--- ffmpeg.lua - Lua FFmpeg API for Screencasting
--- Provides full control over FFmpeg for expert users
 
 local ffmpeg = {
     _VERSION = "1.0.0",
