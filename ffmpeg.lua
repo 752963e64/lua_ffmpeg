@@ -49,11 +49,16 @@ function Recorder:new()
         complex_filters = "",
         stream_maps = {},
         process = nil,
+        process_pid = nil,
+        progress_coroutine = nil,
         callbacks = {},
         status = {
             running = false,
             duration = 0,
             size = 0,
+            bitrate = 0,
+            fps = 0,
+            frame = 0,
             error = nil
         }
     }
@@ -420,17 +425,37 @@ function Recorder:start()
     -- Store the command for debugging
     self.last_command = cmd
     
+    -- Create a temporary file for stderr output
+    local stderr_file = os.tmpname()
+    local full_cmd = cmd .. " 2>" .. stderr_file .. " &"
+    
     -- Execute command in background
-    -- For persistent recording, we need to run it asynchronously
-    local bg_cmd = cmd .. " &"
-    local exit_code = os.execute(bg_cmd)
+    local exit_code = os.execute(full_cmd)
     
     if not exit_code or exit_code ~= 0 then
         return false, "Failed to start ffmpeg process. Command: " .. cmd
     end
     
+    -- Give ffmpeg a moment to start
+    os.execute("sleep 0.2")
+    
+    -- Get the PID of the ffmpeg process (platform specific)
+    local pid_handle = io.popen("pgrep -n ffmpeg")
+    if pid_handle then
+        local pid = pid_handle:read("*l")
+        pid_handle:close()
+        self.process_pid = tonumber(pid)
+    end
+    
     self.status.running = true
     self.status.error = nil
+    self.stderr_file = stderr_file
+    self.last_file_size = 0
+    
+    -- Start progress monitoring coroutine
+    self.progress_coroutine = coroutine.create(function()
+        self:_monitor_progress()
+    end)
     
     if self.callbacks.on_start then
         self.callbacks.on_start()
@@ -439,16 +464,148 @@ function Recorder:start()
     return true
 end
 
+function Recorder:_monitor_progress()
+    while self.status.running do
+        local file = io.open(self.stderr_file, "r")
+        if file then
+            -- Read only new content from where we left off
+            file:seek("set", self.last_file_size)
+            local content = file:read("*a")
+            local new_size = file:seek()
+            file:close()
+            
+            if content and content ~= "" and new_size > self.last_file_size then
+                self.last_file_size = new_size
+                self:_parse_progress(content)
+            end
+        end
+        
+        -- Yield to allow other operations
+        coroutine.yield()
+    end
+end
+
+function Recorder:_parse_progress(output)
+    -- FFmpeg progress output in stderr looks like:
+    -- frame=  123 fps= 30 q=28.0 size=    1024kB time=00:00:05.00 bitrate=1677.7kbits/s speed=1.00x
+    
+    -- Get the last line that contains progress info
+    local last_progress_line = nil
+    for line in output:gmatch("[^\r\n]+") do
+        if line:match("frame=") and line:match("time=") then
+            last_progress_line = line
+        end
+    end
+    
+    if not last_progress_line then
+        return
+    end
+    
+    local updated = false
+    
+    -- Parse frame number
+    local frame = last_progress_line:match("frame=%s*(%d+)")
+    if frame then
+        self.status.frame = tonumber(frame)
+        updated = true
+    end
+    
+    -- Parse fps
+    local fps = last_progress_line:match("fps=%s*([%d%.]+)")
+    if fps then
+        self.status.fps = tonumber(fps)
+        updated = true
+    end
+    
+    -- Parse bitrate (in kbits/s)
+    local bitrate = last_progress_line:match("bitrate=%s*([%d%.]+)")
+    if bitrate then
+        self.status.bitrate = tonumber(bitrate)
+        updated = true
+    end
+    
+    -- Parse size (can be in kB, MB, etc)
+    local size_str, size_unit = last_progress_line:match("size=%s*(%d+)(k?M?B)")
+    if size_str then
+        local size = tonumber(size_str)
+        if size_unit == "kB" then
+            self.status.size = size * 1024
+        elseif size_unit == "MB" then
+            self.status.size = size * 1024 * 1024
+        else
+            self.status.size = size
+        end
+        updated = true
+    end
+    
+    -- Parse time (format: HH:MM:SS.ms)
+    local hours, minutes, seconds = last_progress_line:match("time=(%d+):(%d+):([%d%.]+)")
+    if hours and minutes and seconds then
+        self.status.duration = tonumber(hours) * 3600 + tonumber(minutes) * 60 + tonumber(seconds)
+        updated = true
+    end
+    
+    -- Call progress callback if registered and we got new data
+    if updated and self.callbacks.on_progress then
+        self.callbacks.on_progress({
+            frame = self.status.frame,
+            fps = self.status.fps,
+            bitrate = self.status.bitrate,
+            size = self.status.size,
+            duration = self.status.duration
+        })
+    end
+end
+
+-- Debug method to see stderr output
+function Recorder:get_stderr()
+    if not self.stderr_file then
+        return nil
+    end
+    
+    local file = io.open(self.stderr_file, "r")
+    if not file then
+        return nil
+    end
+    
+    local content = file:read("*a")
+    file:close()
+    return content
+end
+
+function Recorder:update()
+    -- Resume the progress monitoring coroutine
+    if self.progress_coroutine and coroutine.status(self.progress_coroutine) ~= "dead" then
+        local success, err = coroutine.resume(self.progress_coroutine)
+        if not success then
+            if self.callbacks.on_error then
+                self.callbacks.on_error(err)
+            end
+        end
+    end
+    return self
+end
+
 function Recorder:stop()
     if not self.status.running then
         return false, "Recorder is not running"
     end
     
-    -- Send 'q' to ffmpeg to gracefully stop (requires interactive mode)
-    -- Alternative: use pkill or kill the process by PID
-    os.execute("pkill -INT ffmpeg")
+    -- Send SIGINT to the specific ffmpeg process
+    if self.process_pid then
+        os.execute("kill -INT " .. self.process_pid)
+    else
+        -- Fallback to killing all ffmpeg processes
+        os.execute("pkill -INT ffmpeg")
+    end
     
     self.status.running = false
+    
+    -- Clean up stderr file
+    if self.stderr_file then
+        os.remove(self.stderr_file)
+        self.stderr_file = nil
+    end
     
     if self.callbacks.on_stop then
         self.callbacks.on_stop()
@@ -476,6 +633,9 @@ function Recorder:get_status()
         running = self.status.running,
         duration = self.status.duration,
         size = self.status.size,
+        bitrate = self.status.bitrate,
+        fps = self.status.fps,
+        frame = self.status.frame,
         error = self.status.error
     }
 end
@@ -577,4 +737,3 @@ ffmpeg.presets.streaming = {
 }
 
 return ffmpeg
-
