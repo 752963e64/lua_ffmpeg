@@ -31,9 +31,12 @@ local ffmpeg = require("ffmpeg")
 
 local recorder = ffmpeg.Recorder:new()
     :input_video({device = "x11grab", source = ":0", framerate = 30})
+--  to pick audio from microphone
+--  :input_audio({device = "alsa", source = "default"}) 
     :output_video({codec = "libx264", crf = 10, preset = "ultrafast"})
-    :output_audio({codec = "aac", bitrate = "128k"})
-    :output("screencast.mp4")
+--  to record the audio along with the video stream
+--  :output_audio({codec = "aac", bitrate = "128k"})
+    :output("screencast.mkv")
     :on_progress(function(data)
         print(string.format("PROGRESS: Frame: %d | FPS: %.1f | Time: %.1fs", 
             data.frame, data.fps, data.duration))

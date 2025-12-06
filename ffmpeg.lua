@@ -16,12 +16,6 @@ local ffmpeg = {
     presets = {}
 }
 
--- Utility functions
-local function escape_arg(arg)
-    -- Escape shell arguments to prevent injection
-    return "'" .. tostring(arg):gsub("'", "'\\''") .. "'"
-end
-
 local function table_merge(t1, t2)
     local result = {}
     for k, v in pairs(t1 or {}) do result[k] = v end
